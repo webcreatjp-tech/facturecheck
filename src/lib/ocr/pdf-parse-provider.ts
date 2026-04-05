@@ -17,8 +17,13 @@ export class PdfParseProvider implements OcrProvider {
   readonly name = "pdf-parse";
 
   async extractText(pdfBuffer: Buffer): Promise<OcrResult> {
-    // Import dynamique pour éviter les problèmes de bundling en Edge
-    const pdfParse = (await import("pdf-parse")).default;
+    // pdf-parse est un module CJS — utiliser require() est plus fiable que import()
+    // car certains bundlers enveloppent le module.exports dans { default: ... }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require("pdf-parse") as (
+      buf: Buffer,
+      opts?: { max?: number }
+    ) => Promise<{ text?: string }>;
 
     const data = await pdfParse(pdfBuffer, {
       // Désactive le chargement des tests internes de pdf-parse
