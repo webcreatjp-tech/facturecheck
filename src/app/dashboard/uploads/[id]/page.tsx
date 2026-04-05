@@ -1,15 +1,18 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, FileText, AlertCircle, Clock } from "lucide-react";
+import { ArrowLeft, FileText, AlertCircle, Clock, Layers } from "lucide-react";
 import { getUploadWithOcr } from "@/app/actions/ocr";
 import RetryOcrButton from "@/components/RetryOcrButton";
+import RetryExtractionButton from "@/components/RetryExtractionButton";
+import ExtractedFieldsPanel from "@/components/ExtractedFieldsPanel";
+import type { StructuredInvoiceFields } from "@/lib/extraction/types";
 
 // --------------------------------------------------------------------------
 // Métadonnées dynamiques
 // --------------------------------------------------------------------------
 
 export const metadata = {
-  title: "Texte extrait – FactureCheck",
+  title: "Détail de la facture – FactureCheck",
 };
 
 // --------------------------------------------------------------------------
@@ -42,11 +45,11 @@ export default async function UploadDetailPage({ params }: PageProps) {
   const upload = await getUploadWithOcr(id);
 
   if (!upload) {
-    // Accès refusé ou document inexistant → retour dashboard
     redirect("/dashboard");
   }
 
   const ocrStatus = upload.ocr_status ?? "pending";
+  const extractionStatus = upload.extraction_status ?? "pending";
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -90,7 +93,9 @@ export default async function UploadDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* ── Contenu selon le statut ── */}
+      {/* ══════════════════════════════════════════════════════════════
+          Section OCR
+      ══════════════════════════════════════════════════════════════ */}
 
       {ocrStatus === "pending" && (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50 py-14 text-center">
@@ -150,7 +155,7 @@ export default async function UploadDetailPage({ params }: PageProps) {
         <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
             <h2 className="text-sm font-semibold text-gray-700">
-              Texte extrait
+              Texte brut OCR
             </h2>
             <span className="text-xs text-gray-400">
               {upload.ocr_text?.length ?? 0} caractères
@@ -159,7 +164,7 @@ export default async function UploadDetailPage({ params }: PageProps) {
 
           {upload.ocr_text ? (
             <pre
-              className="px-5 py-4 text-sm text-gray-800 font-mono whitespace-pre-wrap break-words overflow-auto max-h-[60vh] leading-relaxed"
+              className="px-5 py-4 text-sm text-gray-800 font-mono whitespace-pre-wrap break-words overflow-auto max-h-[40vh] leading-relaxed"
               aria-label="Texte extrait de la facture par OCR"
             >
               {upload.ocr_text}
@@ -171,6 +176,74 @@ export default async function UploadDetailPage({ params }: PageProps) {
             </div>
           )}
         </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          Section Extraction structurée (visible seulement si OCR terminé)
+      ══════════════════════════════════════════════════════════════ */}
+
+      {ocrStatus === "processed" && (
+        <>
+          {extractionStatus === "pending" && (
+            <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50 py-10 text-center">
+              <Layers className="h-8 w-8 text-gray-300" aria-hidden />
+              <p className="font-medium text-gray-600">
+                Extraction des champs en attente
+              </p>
+              <p className="text-sm text-gray-400">
+                L&apos;extraction structurée n&apos;a pas encore démarré.
+              </p>
+              <RetryExtractionButton uploadId={upload.id} />
+            </div>
+          )}
+
+          {extractionStatus === "processing" && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex flex-col items-center gap-4 rounded-2xl border border-blue-100 bg-blue-50 py-10 text-center"
+            >
+              <div className="h-8 w-8 rounded-full border-4 border-blue-200 border-t-blue-500 animate-spin" />
+              <p className="font-medium text-blue-700">
+                Extraction des champs en cours…
+              </p>
+              <p className="text-sm text-blue-600">
+                Actualisez la page dans quelques instants.
+              </p>
+            </div>
+          )}
+
+          {extractionStatus === "failed" && (
+            <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle
+                  className="h-5 w-5 text-red-500 shrink-0 mt-0.5"
+                  aria-hidden
+                />
+                <div className="flex-1">
+                  <p className="font-semibold text-red-700">
+                    L&apos;extraction des champs a échoué
+                  </p>
+                  {upload.extraction_error && (
+                    <p className="mt-1 text-sm text-red-600" role="alert">
+                      {upload.extraction_error}
+                    </p>
+                  )}
+                  <div className="mt-4">
+                    <RetryExtractionButton uploadId={upload.id} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {extractionStatus === "extracted" && upload.extracted_fields && (
+            <ExtractedFieldsPanel
+              fields={upload.extracted_fields as unknown as StructuredInvoiceFields}
+              extractionVersion={upload.extraction_version}
+            />
+          )}
+        </>
       )}
     </div>
   );

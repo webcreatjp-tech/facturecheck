@@ -4,6 +4,7 @@
 
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { getOcrProvider } from "@/lib/ocr";
+import { triggerExtractionAsync } from "@/app/actions/extraction";
 import type { UploadRecord } from "@/app/actions/upload";
 
 // Next.js Node.js runtime (pdf-parse utilise des APIs Node)
@@ -126,6 +127,10 @@ export async function POST(request: Request) {
     console.info(
       `[ocr/process] Upload ${uploadId} traité par "${result.provider}" — ${result.text.length} caractères`
     );
+
+    // Déclencher l'extraction structurée de façon asynchrone (fire-and-forget)
+    triggerExtractionAsync(uploadId);
+
     return Response.json({ success: true, uploadId });
   } catch (err) {
     const errMsg =

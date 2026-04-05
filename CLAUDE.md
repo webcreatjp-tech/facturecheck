@@ -285,6 +285,7 @@ npm test             # tests en mode watch
 | T002 | Connexion Supabase + enregistrement waitlist | `feature/T002` |
 | T003 | Auth Supabase + upload PDF sécurisé | `feature/T003` |
 | T004 | Pipeline OCR (pdf-parse + Azure stub) | `feature/T004` |
+| T005 | Extraction structurée des champs de facture (regex) | `feature/T005` |
 
 ---
 

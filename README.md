@@ -121,6 +121,37 @@ uploadInvoice()          /api/ocr/process
 2. Ajouter la logique de sélection dans `src/lib/ocr/index.ts` (fonction `getOcrProvider`)
 3. Ajouter les variables d'environnement nécessaires dans `.env.local.example`
 
+### Extraction structurée (T005)
+
+#### Variables d'environnement
+
+Aucune variable supplémentaire requise. Le pipeline d'extraction réutilise `INTERNAL_OCR_SECRET` pour protéger la route interne `/api/extraction/process`.
+
+#### Fournisseurs d'extraction disponibles
+
+| Fournisseur | Classe | Activation |
+|---|---|---|
+| `regex` (défaut) | `RegexExtractionProvider` | Aucune config requise |
+| Mock | `MockExtractionProvider` | Tests uniquement |
+
+#### Architecture du pipeline
+
+```
+/api/ocr/process              /api/extraction/process
+        │                               │
+        ├─ OCR réussi                   ├─ Valide secret interne
+        └─ fetch() fire-and-forget      ├─ Vérifie ocr_status = 'processed'
+                                        ├─ Vérifie idempotence
+                                        ├─ SET extraction_status='processing'
+                                        ├─ getExtractionProvider().extractFields(ocr_text)
+                                        └─ SET extraction_status='extracted' + extracted_fields (JSONB)
+```
+
+#### Ajouter un nouveau fournisseur d'extraction
+
+1. Implémenter l'interface `ExtractionProvider` (voir `src/lib/extraction/types.ts`)
+2. Ajouter la logique de sélection dans `src/lib/extraction/index.ts` (fonction `getExtractionProvider`)
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.

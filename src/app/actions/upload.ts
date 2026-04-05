@@ -31,6 +31,12 @@ export interface UploadRecord {
   ocr_error?: string | null;
   ocr_processed_at?: string | null;
   ocr_provider?: string | null;
+  // Champs extraction structurée (T005) — optionnels : absents avant la migration 005
+  extraction_status?: "pending" | "processing" | "extracted" | "failed";
+  extraction_error?: string | null;
+  extraction_processed_at?: string | null;
+  extraction_version?: string | null;
+  extracted_fields?: Record<string, unknown> | null;
 }
 
 export type UploadErrorCode =

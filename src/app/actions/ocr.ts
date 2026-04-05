@@ -75,7 +75,7 @@ export async function retryOcr(uploadId: string): Promise<OcrActionResult> {
     return { success: false, code: "already_processing" };
   }
 
-  // 4. Remettre à zéro les champs OCR
+  // 4. Remettre à zéro les champs OCR et extraction (l'extraction sera relancée après l'OCR)
   const { error: resetErr } = await admin
     .from("uploads")
     .update({
@@ -84,6 +84,11 @@ export async function retryOcr(uploadId: string): Promise<OcrActionResult> {
       ocr_error: null,
       ocr_processed_at: null,
       ocr_provider: null,
+      extraction_status: "pending",
+      extracted_fields: null,
+      extraction_error: null,
+      extraction_processed_at: null,
+      extraction_version: null,
     })
     .eq("id", uploadId);
 
