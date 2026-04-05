@@ -12,13 +12,15 @@ import type { OcrProvider, OcrResult } from "./types";
  *   - Pour les scans, utiliser AzureFormRecognizerProvider (T004+)
  *
  * Runtime : Node.js uniquement (ne fonctionne pas en Edge runtime)
+ *
+ * pdf-parse v2.x a changé d'API : ce n'est plus une fonction mais une classe.
+ * Usage : new PDFParse({ data: buffer }).getText() → TextResult { text: string }
  */
 export class PdfParseProvider implements OcrProvider {
   readonly name = "pdf-parse";
 
   async extractText(pdfBuffer: Buffer): Promise<OcrResult> {
     // pdfjs-dist >= 4.x utilise DOMMatrix, une API web absente de Node.js.
-    // On injecte un polyfill minimal avant d'appeler pdf-parse.
     if (typeof globalThis.DOMMatrix === "undefined") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (globalThis as any).DOMMatrix = class DOMMatrix {
@@ -46,20 +48,17 @@ export class PdfParseProvider implements OcrProvider {
       };
     }
 
-    // pdf-parse est un module CJS — utiliser require() est plus fiable que import()
-    // car certains bundlers enveloppent le module.exports dans { default: ... }
+    // pdf-parse v2.x : API classe (PDFParse) au lieu d'une fonction
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse") as (
-      buf: Buffer,
-      opts?: { max?: number }
-    ) => Promise<{ text?: string }>;
+    const { PDFParse } = require("pdf-parse") as {
+      PDFParse: new (opts: { data: Buffer }) => {
+        getText(params?: Record<string, unknown>): Promise<{ text: string }>;
+      };
+    };
 
-    const data = await pdfParse(pdfBuffer, {
-      // Désactive le chargement des tests internes de pdf-parse
-      max: 0,
-    });
-
-    const text = (data.text ?? "").trim();
+    const parser = new PDFParse({ data: pdfBuffer });
+    const result = await parser.getText();
+    const text = (result.text ?? "").trim();
 
     return {
       text,
