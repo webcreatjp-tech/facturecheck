@@ -21,27 +21,7 @@ export type ExtractionActionResult =
         | "server_error";
     };
 
-// --------------------------------------------------------------------------
-// Helper interne : déclenche l'extraction de façon asynchrone (fire-and-forget)
-// --------------------------------------------------------------------------
-
-export function triggerExtractionAsync(uploadId: string): void {
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-    "http://localhost:3000";
-  const secret = process.env.INTERNAL_OCR_SECRET ?? "";
-
-  fetch(`${base}/api/extraction/process`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-internal-secret": secret,
-    },
-    body: JSON.stringify({ uploadId }),
-  }).catch((err: unknown) => {
-    console.error("[extraction] Échec du déclenchement asynchrone :", err);
-  });
-}
+import { triggerExtractionAsync } from "@/lib/api";
 
 // --------------------------------------------------------------------------
 // retryExtraction – relance l'extraction pour un upload dont l'OCR est prêt

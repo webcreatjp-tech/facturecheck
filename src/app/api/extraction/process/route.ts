@@ -4,7 +4,7 @@
 
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { getExtractionProvider } from "@/lib/extraction";
-import { triggerComplianceAsync } from "@/app/actions/compliance";
+import { triggerComplianceAsync } from "@/lib/api";
 import type { UploadRecord } from "@/app/actions/upload";
 
 export const runtime = "nodejs";

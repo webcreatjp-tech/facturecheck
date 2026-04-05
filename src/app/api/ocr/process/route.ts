@@ -4,7 +4,7 @@
 
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { getOcrProvider } from "@/lib/ocr";
-import { triggerExtractionAsync } from "@/app/actions/extraction";
+import { triggerExtractionAsync } from "@/lib/api";
 import type { UploadRecord } from "@/app/actions/upload";
 
 // Next.js Node.js runtime (pdf-parse utilise des APIs Node)

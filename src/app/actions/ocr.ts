@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseSessionClient } from "@/lib/supabase-server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import type { UploadRecord } from "./upload";
+import { triggerOcrAsync } from "@/lib/api";
 
 // --------------------------------------------------------------------------
 // Types
@@ -16,33 +17,6 @@ export type OcrActionResult =
 // --------------------------------------------------------------------------
 // Helpers internes
 // --------------------------------------------------------------------------
-
-function buildOcrUrl(uploadId: string): { url: string; secret: string } {
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-    "http://localhost:3000";
-  const secret = process.env.INTERNAL_OCR_SECRET ?? "";
-  return { url: `${base}/api/ocr/process`, secret };
-}
-
-/**
- * Déclenche le traitement OCR de façon asynchrone (fire-and-forget).
- * L'appelant n'attend pas la fin de l'OCR.
- */
-function triggerOcrAsync(uploadId: string): void {
-  const { url, secret } = buildOcrUrl(uploadId);
-
-  fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-internal-secret": secret,
-    },
-    body: JSON.stringify({ uploadId }),
-  }).catch((err: unknown) => {
-    console.error("[ocr] Échec du déclenchement asynchrone :", err);
-  });
-}
 
 // --------------------------------------------------------------------------
 // retryOcr – relance le traitement OCR pour un upload échoué
@@ -132,5 +106,3 @@ export async function getUploadWithOcr(
   return data ?? null;
 }
 
-// Exporte le helper pour upload.ts (même fichier ne peut pas importer actions/)
-export { triggerOcrAsync };

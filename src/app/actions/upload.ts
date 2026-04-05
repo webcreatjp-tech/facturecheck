@@ -10,6 +10,7 @@ import {
   STORAGE_BUCKET,
   buildStoragePath,
 } from "@/lib/upload-config";
+import { triggerOcrAsync } from "@/lib/api";
 
 // --------------------------------------------------------------------------
 // Types
@@ -52,28 +53,6 @@ export type UploadErrorCode =
 export type UploadResult =
   | { success: true; upload: UploadRecord }
   | { success: false; code: UploadErrorCode };
-
-// --------------------------------------------------------------------------
-// Helper interne : déclenche l'OCR de façon asynchrone
-// --------------------------------------------------------------------------
-
-function triggerOcrAsync(uploadId: string): void {
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-    "http://localhost:3000";
-  const secret = process.env.INTERNAL_OCR_SECRET ?? "";
-
-  fetch(`${base}/api/ocr/process`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-internal-secret": secret,
-    },
-    body: JSON.stringify({ uploadId }),
-  }).catch((err: unknown) => {
-    console.error("[upload] Échec du déclenchement OCR :", err);
-  });
-}
 
 // --------------------------------------------------------------------------
 // Action principale : téléversement d'une facture PDF

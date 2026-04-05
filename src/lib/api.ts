@@ -1,47 +1,49 @@
-import {
-  joinWaitlist,
-  type WaitlistSource,
-} from "@/app/actions/waitlist";
+// Helpers côté serveur pour déclencher les étapes du pipeline en fire-and-forget.
+// Ce fichier N'est PAS un "use server" — il peut être importé depuis les routes API
+// et les Server Actions sans restriction.
 
-// --------------------------------------------------------------------------
-// Erreur typée
-// --------------------------------------------------------------------------
-
-export class WaitlistError extends Error {
-  constructor(
-    message: string,
-    public readonly code: "duplicate" | "invalid_email" | "server_error"
-  ) {
-    super(message);
-    this.name = "WaitlistError";
-  }
+function buildInternalHeaders() {
+  return {
+    "Content-Type": "application/json",
+    "x-internal-secret": process.env.INTERNAL_OCR_SECRET ?? "",
+  };
 }
 
-// Messages d'erreur en français
-const ERROR_MESSAGES: Record<WaitlistError["code"], string> = {
-  duplicate:
-    "Cette adresse email est déjà inscrite sur la liste d'attente.",
-  invalid_email: "Veuillez saisir une adresse email valide.",
-  server_error: "Une erreur est survenue. Veuillez réessayer.",
-};
+function baseUrl() {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000"
+  );
+}
 
-// --------------------------------------------------------------------------
-// API publique
-// --------------------------------------------------------------------------
+/** Déclenche l'OCR de façon asynchrone (fire-and-forget). */
+export function triggerOcrAsync(uploadId: string): void {
+  fetch(`${baseUrl()}/api/ocr/process`, {
+    method: "POST",
+    headers: buildInternalHeaders(),
+    body: JSON.stringify({ uploadId }),
+  }).catch((err: unknown) => {
+    console.error("[pipeline] Échec déclenchement OCR :", err);
+  });
+}
 
-/**
- * Inscrit un email sur la liste d'attente.
- * @param email  Adresse email saisie par l'utilisateur
- * @param source Zone d'origine du formulaire ("hero" | "footer")
- * @throws {WaitlistError} si l'email est invalide, déjà inscrit, ou en cas d'erreur serveur
- */
-export async function registerWaitlistEmail(
-  email: string,
-  source: WaitlistSource
-): Promise<void> {
-  const result = await joinWaitlist(email, source);
+/** Déclenche l'extraction structurée de façon asynchrone (fire-and-forget). */
+export function triggerExtractionAsync(uploadId: string): void {
+  fetch(`${baseUrl()}/api/extraction/process`, {
+    method: "POST",
+    headers: buildInternalHeaders(),
+    body: JSON.stringify({ uploadId }),
+  }).catch((err: unknown) => {
+    console.error("[pipeline] Échec déclenchement extraction :", err);
+  });
+}
 
-  if (!result.success) {
-    throw new WaitlistError(ERROR_MESSAGES[result.code], result.code);
-  }
+/** Déclenche la vérification de conformité de façon asynchrone (fire-and-forget). */
+export function triggerComplianceAsync(uploadId: string): void {
+  fetch(`${baseUrl()}/api/compliance/check`, {
+    method: "POST",
+    headers: buildInternalHeaders(),
+    body: JSON.stringify({ uploadId }),
+  }).catch((err: unknown) => {
+    console.error("[pipeline] Échec déclenchement conformité :", err);
+  });
 }
