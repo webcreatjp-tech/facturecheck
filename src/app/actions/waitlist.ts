@@ -1,30 +1,7 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase";
-
-// --------------------------------------------------------------------------
-// Types
-// --------------------------------------------------------------------------
-
-export type WaitlistSource = "hero" | "footer";
-
-export type WaitlistResult =
-  | { success: true }
-  | { success: false; code: "duplicate" | "invalid_email" | "server_error" };
-
-// --------------------------------------------------------------------------
-// Validation
-// --------------------------------------------------------------------------
-
-// RFC 5322 simplifié – chaque label de domaine séparé par un point unique
-// Exemples valides : user@example.com, prenom.nom@sub.domain.fr
-// Rejette : user@domain..fr, @domain.fr, user@
-const EMAIL_REGEX =
-  /^[A-Za-z0-9._%+\-]+@(?:[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/;
-
-export function isValidEmail(email: string): boolean {
-  return EMAIL_REGEX.test(email.trim());
-}
+import { isValidEmail } from "@/lib/utils";
 
 // --------------------------------------------------------------------------
 // Action principale

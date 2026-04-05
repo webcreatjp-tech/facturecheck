@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { isValidEmail, joinWaitlist } from "./waitlist";
+import { joinWaitlist } from "./waitlist";
+import { isValidEmail } from "@/lib/utils";
 
 // Mock du client Supabase
 const mockInsert = vi.fn();
