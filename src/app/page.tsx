@@ -95,7 +95,7 @@ export default function HomePage() {
 
             {/* ── Email signup ── */}
             <div id="signup" className="mt-10 scroll-mt-24">
-              <EmailSignupForm />
+              <EmailSignupForm source="hero" />
               <p className="mt-3 text-xs text-gray-400">
                 Gratuit, sans carte bancaire. Accès anticipé limité.
               </p>
@@ -173,7 +173,7 @@ export default function HomePage() {
               Rejoignez les freelances et TPE qui vérifient leurs factures avant
               de les envoyer.
             </p>
-            <EmailSignupForm />
+            <EmailSignupForm source="footer" />
           </div>
         </section>
       </main>

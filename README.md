@@ -29,6 +29,34 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Variables d'environnement
+
+Copiez `.env.local.example` en `.env.local` et renseignez les trois variables :
+
+| Variable | Portée | Description |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Client + Serveur | URL du projet Supabase (Dashboard → Settings → API) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client + Serveur | Clé anonyme Supabase (publique, sans danger) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Serveur uniquement** | Clé service role — **ne jamais exposer côté client** |
+
+```bash
+cp .env.local.example .env.local
+# Éditez .env.local avec les valeurs de votre projet Supabase
+```
+
+> **Déploiement Vercel** : ajoutez ces trois variables dans *Project → Settings → Environment Variables*.  
+> Sélectionnez "Production" et "Preview" pour `NEXT_PUBLIC_*`, mais **uniquement "Production"** pour `SUPABASE_SERVICE_ROLE_KEY`.
+
+### Migration base de données
+
+Avant le premier lancement, exécutez le fichier de migration dans l'éditeur SQL Supabase :
+
+```
+migrations/001_waitlist.sql
+```
+
+Ce script crée la table `waitlist`, les contraintes d'unicité sur l'email, et les politiques RLS (insertion publique, lecture réservée au service role).
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
