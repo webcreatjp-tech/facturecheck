@@ -37,6 +37,10 @@ export interface UploadRecord {
   extraction_processed_at?: string | null;
   extraction_version?: string | null;
   extracted_fields?: Record<string, unknown> | null;
+  // Champs conformité (T006) — optionnels : absents avant la migration 006
+  compliance_status?: "pending" | "processing" | "checked" | "failed";
+  compliance_score?: number | null;
+  compliance_band?: "conforme" | "attention" | "non_conforme_corrections" | "non_conforme_invalide" | null;
 }
 
 export type UploadErrorCode =

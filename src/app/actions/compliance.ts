@@ -4,35 +4,35 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseSessionClient } from "@/lib/supabase-server";
 import { createSupabaseServerClient } from "@/lib/supabase";
 import type { UploadRecord } from "./upload";
+import type { ComplianceResultRecord } from "@/lib/compliance/types";
 
 // --------------------------------------------------------------------------
 // Types
 // --------------------------------------------------------------------------
 
-export type OcrActionResult =
+export type ComplianceActionResult =
   | { success: true }
-  | { success: false; code: "unauthenticated" | "not_found" | "already_processing" | "server_error" };
+  | {
+      success: false;
+      code:
+        | "unauthenticated"
+        | "not_found"
+        | "extraction_not_ready"
+        | "already_processing"
+        | "server_error";
+    };
 
 // --------------------------------------------------------------------------
-// Helpers internes
+// Helper interne : déclenche la vérification de conformité (fire-and-forget)
 // --------------------------------------------------------------------------
 
-function buildOcrUrl(uploadId: string): { url: string; secret: string } {
+export function triggerComplianceAsync(uploadId: string): void {
   const base =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
     "http://localhost:3000";
   const secret = process.env.INTERNAL_OCR_SECRET ?? "";
-  return { url: `${base}/api/ocr/process`, secret };
-}
 
-/**
- * Déclenche le traitement OCR de façon asynchrone (fire-and-forget).
- * L'appelant n'attend pas la fin de l'OCR.
- */
-function triggerOcrAsync(uploadId: string): void {
-  const { url, secret } = buildOcrUrl(uploadId);
-
-  fetch(url, {
+  fetch(`${base}/api/compliance/check`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -40,15 +40,17 @@ function triggerOcrAsync(uploadId: string): void {
     },
     body: JSON.stringify({ uploadId }),
   }).catch((err: unknown) => {
-    console.error("[ocr] Échec du déclenchement asynchrone :", err);
+    console.error("[compliance] Échec du déclenchement asynchrone :", err);
   });
 }
 
 // --------------------------------------------------------------------------
-// retryOcr – relance le traitement OCR pour un upload échoué
+// retryCompliance – relance la vérification pour un upload dont l'extraction est prête
 // --------------------------------------------------------------------------
 
-export async function retryOcr(uploadId: string): Promise<OcrActionResult> {
+export async function retryCompliance(
+  uploadId: string
+): Promise<ComplianceActionResult> {
   // 1. Auth
   const sessionClient = await createSupabaseSessionClient();
   const {
@@ -57,63 +59,63 @@ export async function retryOcr(uploadId: string): Promise<OcrActionResult> {
 
   if (!user) return { success: false, code: "unauthenticated" };
 
-  // 2. Vérifier l'existence et la propriété (pas de RLS bypass : le user_id
-  //    est vérifié manuellement pour un message d'erreur clair)
+  // 2. Vérifier existence et propriété
   const admin = createSupabaseServerClient();
   const { data: upload, error: fetchErr } = await admin
     .from("uploads")
-    .select("id, user_id, ocr_status")
+    .select("id, user_id, extraction_status, compliance_status")
     .eq("id", uploadId)
-    .single<Pick<UploadRecord, "id" | "user_id" | "ocr_status">>();
+    .single<
+      Pick<
+        UploadRecord,
+        "id" | "user_id" | "extraction_status" | "compliance_status"
+      >
+    >();
 
   if (fetchErr || !upload || upload.user_id !== user.id) {
     return { success: false, code: "not_found" };
   }
 
-  // 3. Ne pas relancer si déjà en cours
-  if (upload.ocr_status === "processing") {
+  // 3. L'extraction doit être terminée
+  if (upload.extraction_status !== "extracted") {
+    return { success: false, code: "extraction_not_ready" };
+  }
+
+  // 4. Ne pas relancer si déjà en cours
+  if (upload.compliance_status === "processing") {
     return { success: false, code: "already_processing" };
   }
 
-  // 4. Remettre à zéro OCR, extraction et conformité (tout se re-déclenche en cascade)
+  // 5. Remettre à zéro le statut
   const { error: resetErr } = await admin
     .from("uploads")
     .update({
-      ocr_status: "pending",
-      ocr_text: null,
-      ocr_error: null,
-      ocr_processed_at: null,
-      ocr_provider: null,
-      extraction_status: "pending",
-      extracted_fields: null,
-      extraction_error: null,
-      extraction_processed_at: null,
-      extraction_version: null,
-      compliance_status: null,
-      compliance_score: null,
-      compliance_band: null,
+      compliance_status: "pending",
+      compliance_score:  null,
+      compliance_band:   null,
     })
     .eq("id", uploadId);
 
   if (resetErr) {
-    console.error("[ocr] Erreur reset :", resetErr.message);
+    console.error("[compliance] Erreur reset :", resetErr.message);
     return { success: false, code: "server_error" };
   }
 
-  // 5. Déclencher l'OCR de façon asynchrone
-  triggerOcrAsync(uploadId);
+  // 6. Déclencher de façon asynchrone
+  triggerComplianceAsync(uploadId);
 
   revalidatePath("/dashboard");
+  revalidatePath(`/dashboard/uploads/${uploadId}`);
   return { success: true };
 }
 
 // --------------------------------------------------------------------------
-// getUploadWithOcr – récupère un upload avec ses données OCR (accès owner)
+// getComplianceResult – récupère le résultat de conformité (accès owner)
 // --------------------------------------------------------------------------
 
-export async function getUploadWithOcr(
+export async function getComplianceResult(
   uploadId: string
-): Promise<UploadRecord | null> {
+): Promise<ComplianceResultRecord | null> {
   const sessionClient = await createSupabaseSessionClient();
   const {
     data: { user },
@@ -123,14 +125,11 @@ export async function getUploadWithOcr(
 
   const admin = createSupabaseServerClient();
   const { data } = await admin
-    .from("uploads")
+    .from("compliance_results")
     .select("*")
-    .eq("id", uploadId)
+    .eq("upload_id", uploadId)
     .eq("user_id", user.id) // contrôle d'accès : owner uniquement
-    .single<UploadRecord>();
+    .single<ComplianceResultRecord>();
 
   return data ?? null;
 }
-
-// Exporte le helper pour upload.ts (même fichier ne peut pas importer actions/)
-export { triggerOcrAsync };

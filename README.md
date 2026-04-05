@@ -152,6 +152,57 @@ Aucune variable supplémentaire requise. Le pipeline d'extraction réutilise `IN
 1. Implémenter l'interface `ExtractionProvider` (voir `src/lib/extraction/types.ts`)
 2. Ajouter la logique de sélection dans `src/lib/extraction/index.ts` (fonction `getExtractionProvider`)
 
+### Moteur de conformité (T006)
+
+#### Variables d'environnement
+
+Aucune variable supplémentaire requise. Le pipeline de conformité réutilise `INTERNAL_OCR_SECRET` pour protéger la route interne `/api/compliance/check`.
+
+#### Version des règles
+
+La constante `RULES_VERSION` dans `src/lib/compliance/index.ts` identifie le jeu de règles actif.  
+Incrémenter cette valeur à chaque modification des règles ou de leurs poids.
+
+#### Règles implémentées
+
+| Catégorie | Nombre | Impact score |
+|---|---|---|
+| Erreurs bloquantes | 13 | −11 à −12 pts chacune |
+| Avertissements | 6 | −2 à −5 pts chacun |
+| Suggestions | 4 | 0 pt (bonnes pratiques) |
+
+**Bandes de score :**
+
+| Score | Bande | Couleur |
+|---|---|---|
+| 90-100 | Conforme | Vert |
+| 70-89 | Attention requise | Jaune |
+| 50-69 | Non conforme — corrections nécessaires | Orange |
+| 0-49 | Non conforme — facture invalide | Rouge |
+
+> Une seule erreur bloquante entraîne un score ≤ 89 (hors bande "Conforme").
+
+#### Architecture du pipeline
+
+```
+/api/extraction/process       /api/compliance/check
+        │                               │
+        ├─ Extraction réussie           ├─ Valide secret interne
+        └─ fetch() fire-and-forget      ├─ Vérifie extraction_status = 'extracted'
+                                        ├─ Vérifie idempotence
+                                        ├─ SET compliance_status='processing'
+                                        ├─ checkCompliance(extracted_fields)  ← pur, déterministe
+                                        ├─ UPSERT compliance_results
+                                        └─ SET compliance_status='checked' + score + band
+```
+
+#### Ajouter une nouvelle règle
+
+1. Créer une fonction `ruleXxx(fields): RuleResult` dans `src/lib/compliance/rules.ts`
+2. L'ajouter au tableau `ALL_RULES` dans le même fichier
+3. Incrémenter `RULES_VERSION` dans `src/lib/compliance/index.ts`
+4. Écrire un test unitaire dans `src/lib/compliance/rules.test.ts`
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.

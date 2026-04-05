@@ -286,6 +286,7 @@ npm test             # tests en mode watch
 | T003 | Auth Supabase + upload PDF sécurisé | `feature/T003` |
 | T004 | Pipeline OCR (pdf-parse + Azure stub) | `feature/T004` |
 | T005 | Extraction structurée des champs de facture (regex) | `feature/T005` |
+| T006 | Moteur de conformité + score + rapport (23 règles CGI) | `feature/T006` |
 
 ---
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FileText, Eye, RotateCcw } from "lucide-react";
 import type { UploadRecord } from "@/app/actions/upload";
 import RetryOcrButton from "@/components/RetryOcrButton";
+import ComplianceBadge from "@/components/ComplianceBadge";
 
 // --------------------------------------------------------------------------
 // Helpers
@@ -112,13 +113,18 @@ export default function UploadHistory({ uploads }: UploadHistoryProps) {
                   )}
                 </div>
 
-                {/* Badge statut OCR */}
-                <span
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${OCR_STATUS_CLASSES[ocrStatus]}`}
-                  aria-label={`Statut OCR : ${OCR_STATUS_LABELS[ocrStatus]}`}
-                >
-                  {OCR_STATUS_LABELS[ocrStatus]}
-                </span>
+                {/* Badge conformité (prioritaire sur badge OCR si disponible) */}
+                <ComplianceBadge upload={upload} />
+
+                {/* Badge statut OCR (si pas encore de score conformité) */}
+                {!upload.compliance_status && (
+                  <span
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${OCR_STATUS_CLASSES[ocrStatus]}`}
+                    aria-label={`Statut OCR : ${OCR_STATUS_LABELS[ocrStatus]}`}
+                  >
+                    {OCR_STATUS_LABELS[ocrStatus]}
+                  </span>
+                )}
 
                 {/* Actions */}
                 <div className="flex items-center gap-2 shrink-0">
@@ -126,10 +132,12 @@ export default function UploadHistory({ uploads }: UploadHistoryProps) {
                     <Link
                       href={`/dashboard/uploads/${upload.id}`}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                      aria-label={`Voir le texte extrait de ${upload.file_name}`}
+                      aria-label={`Voir le détail de ${upload.file_name}`}
                     >
                       <Eye className="h-3.5 w-3.5" aria-hidden />
-                      Voir le texte
+                      {upload.compliance_status === "checked"
+                        ? "Voir le rapport"
+                        : "Voir le texte"}
                     </Link>
                   )}
                   {ocrStatus === "failed" && (
