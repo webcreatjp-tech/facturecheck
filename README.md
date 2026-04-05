@@ -57,6 +57,7 @@ Exécutez les scripts SQL dans l'ordre dans l'éditeur SQL Supabase (Dashboard �
 | `migrations/001_waitlist.sql` | Table `waitlist` + RLS |
 | `migrations/002_uploads.sql` | Table `uploads` + RLS (référence `auth.users`) |
 | `migrations/003_storage.sql` | Politiques RLS sur `storage.objects` |
+| `migrations/004_ocr_fields.sql` | Colonnes OCR sur `uploads` (ocr_status, ocr_text, etc.) |
 
 ### Bucket Supabase Storage (T003)
 
@@ -82,6 +83,43 @@ Configuration requise dans Dashboard Supabase → **Authentication → URL Confi
 > En développement, vous pouvez désactiver la confirmation email dans  
 > Dashboard → Authentication → Providers → Email → **"Confirm email" OFF**  
 > pour simplifier les tests.
+
+### Pipeline OCR (T004)
+
+#### Variables d'environnement
+
+| Variable | Obligatoire | Description |
+|---|---|---|
+| `INTERNAL_OCR_SECRET` | **Oui** | Secret protégeant la route `/api/ocr/process`. Générer avec `openssl rand -hex 32` |
+| `AZURE_FORM_RECOGNIZER_ENDPOINT` | Non | Endpoint Azure Form Recognizer (PDFs scannés) |
+| `AZURE_FORM_RECOGNIZER_KEY` | Non | Clé Azure Form Recognizer |
+
+#### Fournisseurs OCR disponibles
+
+| Fournisseur | Activation | PDFs texte | PDFs scannés |
+|---|---|---|---|
+| `pdf-parse` (défaut) | Aucune config requise | ✓ | ✗ |
+| Azure Form Recognizer | Définir les 2 vars Azure | ✓ | ✓ |
+
+#### Architecture du pipeline
+
+```
+uploadInvoice()          /api/ocr/process
+     │                         │
+     ├─ Crée upload (DB)        ├─ Valide secret interne
+     │  ocr_status='pending'    ├─ Télécharge PDF (Storage)
+     │                         ├─ OCR via getOcrProvider()
+     └─ fetch() fire-and-forget └─ Met à jour ocr_status + ocr_text
+```
+
+> **Note Vercel** : le fire-and-forget `fetch()` crée une invocation serverless distincte.  
+> Sur d'autres hébergeurs (Railway, Fly.io), ce comportement peut varier selon la durée maximale des requêtes.
+
+#### Ajouter un nouveau fournisseur OCR
+
+1. Implémenter l'interface `OcrProvider` (voir `src/lib/ocr/types.ts`)
+2. Ajouter la logique de sélection dans `src/lib/ocr/index.ts` (fonction `getOcrProvider`)
+3. Ajouter les variables d'environnement nécessaires dans `.env.local.example`
 
 ## Deploy on Vercel
 

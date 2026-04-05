@@ -25,6 +25,12 @@ export interface UploadRecord {
   file_size: number;
   status: "uploaded" | "processing" | "done" | "error";
   created_at: string;
+  // Champs OCR (T004) — optionnels : absents avant la migration 004
+  ocr_status?: "pending" | "processing" | "processed" | "failed";
+  ocr_text?: string | null;
+  ocr_error?: string | null;
+  ocr_processed_at?: string | null;
+  ocr_provider?: string | null;
 }
 
 export type UploadErrorCode =
@@ -63,6 +69,28 @@ export function slugify(name: string): string {
  */
 export function buildStoragePath(userId: string, fileName: string): string {
   return `${userId}/${Date.now()}-${slugify(fileName)}.pdf`;
+}
+
+// --------------------------------------------------------------------------
+// Helper interne : déclenche l'OCR de façon asynchrone
+// --------------------------------------------------------------------------
+
+function triggerOcrAsync(uploadId: string): void {
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
+    "http://localhost:3000";
+  const secret = process.env.INTERNAL_OCR_SECRET ?? "";
+
+  fetch(`${base}/api/ocr/process`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-internal-secret": secret,
+    },
+    body: JSON.stringify({ uploadId }),
+  }).catch((err: unknown) => {
+    console.error("[upload] Échec du déclenchement OCR :", err);
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -113,7 +141,7 @@ export async function uploadInvoice(formData: FormData): Promise<UploadResult> {
     return { success: false, code: "upload_error" };
   }
 
-  // 5. Insertion des métadonnées en base
+  // 5. Insertion des métadonnées en base (ocr_status = 'pending' par défaut via DB)
   const { data: upload, error: dbError } = await adminClient
     .from("uploads")
     .insert({
@@ -134,8 +162,11 @@ export async function uploadInvoice(formData: FormData): Promise<UploadResult> {
     return { success: false, code: "upload_error" };
   }
 
-  // 6. Invalide le cache de la page dashboard pour rafraîchir l'historique
+  // 6. Invalide le cache dashboard
   revalidatePath("/dashboard");
+
+  // 7. Déclencher l'OCR de façon asynchrone (fire-and-forget)
+  triggerOcrAsync(upload.id);
 
   return { success: true, upload };
 }
