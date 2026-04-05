@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createSupabaseSessionClient } from "@/lib/supabase-server";
+import { getOrCreateProfile } from "@/lib/billing";
 import LogoutButton from "@/components/LogoutButton";
+import PlanBadge from "@/components/PlanBadge";
 
 export const metadata = {
   title: "Tableau de bord – FactureCheck",
@@ -22,6 +24,9 @@ export default async function DashboardLayout({
     redirect("/auth/login");
   }
 
+  const profile = await getOrCreateProfile(user.id);
+  const planStatus = profile?.subscription_status ?? "free";
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ── Navigation ── */}
@@ -34,13 +39,14 @@ export default async function DashboardLayout({
             FactureCheck
           </a>
 
-          <div className="flex items-center gap-4 min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <span
               className="hidden sm:block text-sm text-gray-500 truncate max-w-xs"
               title={user.email}
             >
               {user.email}
             </span>
+            <PlanBadge status={planStatus} />
             <LogoutButton />
           </div>
         </div>

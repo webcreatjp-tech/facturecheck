@@ -1,9 +1,20 @@
 import { getUserUploads } from "@/app/actions/upload";
+import { getUserProfile } from "@/app/actions/billing";
 import UploadZone from "@/components/UploadZone";
 import UploadHistory from "@/components/UploadHistory";
+import Link from "next/link";
+import { AlertCircle } from "lucide-react";
 
 export default async function DashboardPage() {
-  const uploads = await getUserUploads();
+  const [uploads, profile] = await Promise.all([
+    getUserUploads(),
+    getUserProfile(),
+  ]);
+
+  const used = profile?.invoices_used_this_month ?? 0;
+  const limit = profile?.invoices_limit ?? 3;
+  const quotaReached = limit !== null && used >= limit;
+  const quotaNearLimit = !quotaReached && limit !== null && used >= limit - 1;
 
   return (
     <div className="space-y-10">
@@ -16,6 +27,38 @@ export default async function DashboardPage() {
         </p>
       </div>
 
+      {/* ── Nudge quota ── */}
+      {quotaReached && (
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+          <span>
+            Vous avez atteint votre limite de{" "}
+            <strong>{limit} factures</strong> ce mois-ci.{" "}
+            <Link
+              href="/dashboard/billing"
+              className="underline underline-offset-2 font-medium hover:text-red-900"
+            >
+              Passez à un plan supérieur
+            </Link>{" "}
+            pour continuer.
+          </span>
+        </div>
+      )}
+      {quotaNearLimit && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+          <span>
+            Il vous reste <strong>1 facture</strong> sur {limit} ce mois-ci.{" "}
+            <Link
+              href="/dashboard/billing"
+              className="underline underline-offset-2 font-medium hover:text-amber-900"
+            >
+              Voir les plans
+            </Link>
+          </span>
+        </div>
+      )}
+
       {/* ── Upload ── */}
       <section
         aria-labelledby="upload-heading"
@@ -27,7 +70,7 @@ export default async function DashboardPage() {
         >
           Téléverser une facture
         </h2>
-        <UploadZone />
+        <UploadZone quotaReached={quotaReached} />
       </section>
 
       {/* ── Historique ── */}
