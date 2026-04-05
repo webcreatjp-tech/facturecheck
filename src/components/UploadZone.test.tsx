@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import UploadZone from "./UploadZone";
-import { UPLOAD_MAX_BYTES, UPLOAD_ALLOWED_MIME } from "@/app/actions/upload";
+import { UPLOAD_MAX_BYTES, UPLOAD_ALLOWED_MIME } from "@/lib/upload-config";
 
 // --------------------------------------------------------------------------
 // Mocks

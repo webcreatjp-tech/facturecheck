@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { uploadInvoice } from "./upload";
 import {
   slugify,
   buildStoragePath,
-  uploadInvoice,
   UPLOAD_MAX_BYTES,
   UPLOAD_ALLOWED_MIME,
-} from "./upload";
+} from "@/lib/upload-config";
 
 // --------------------------------------------------------------------------
 // Mocks hoistés (doivent être déclarés avant vi.mock pour éviter le TDZ)

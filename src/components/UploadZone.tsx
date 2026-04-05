@@ -4,12 +4,8 @@ import { useRef, useState, useCallback, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  uploadInvoice,
-  UPLOAD_MAX_BYTES,
-  UPLOAD_ALLOWED_MIME,
-  type UploadRecord,
-} from "@/app/actions/upload";
+import { uploadInvoice, type UploadRecord } from "@/app/actions/upload";
+import { UPLOAD_MAX_BYTES, UPLOAD_ALLOWED_MIME } from "@/lib/upload-config";
 
 // --------------------------------------------------------------------------
 // Types
