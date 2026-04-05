@@ -1,6 +1,41 @@
-// Helpers côté serveur pour déclencher les étapes du pipeline en fire-and-forget.
-// Ce fichier N'est PAS un "use server" — il peut être importé depuis les routes API
-// et les Server Actions sans restriction.
+// Helpers partagés — ni "use server" ni "use client".
+// Peut être importé depuis les routes API, Server Actions et Client Components.
+
+import { joinWaitlist, type WaitlistSource } from "@/app/actions/waitlist";
+
+// --------------------------------------------------------------------------
+// Waitlist
+// --------------------------------------------------------------------------
+
+const ERROR_MESSAGES: Record<"duplicate" | "invalid_email" | "server_error", string> = {
+  duplicate: "Cette adresse email est déjà inscrite sur la liste d'attente.",
+  invalid_email: "Veuillez saisir une adresse email valide.",
+  server_error: "Une erreur est survenue. Veuillez réessayer.",
+};
+
+export class WaitlistError extends Error {
+  constructor(
+    message: string,
+    public readonly code: "duplicate" | "invalid_email" | "server_error"
+  ) {
+    super(message);
+    this.name = "WaitlistError";
+  }
+}
+
+export async function registerWaitlistEmail(
+  email: string,
+  source: WaitlistSource
+): Promise<void> {
+  const result = await joinWaitlist(email, source);
+  if (!result.success) {
+    throw new WaitlistError(ERROR_MESSAGES[result.code], result.code);
+  }
+}
+
+// --------------------------------------------------------------------------
+// Pipeline fire-and-forget triggers
+// --------------------------------------------------------------------------
 
 function buildInternalHeaders() {
   return {
