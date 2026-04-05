@@ -4,6 +4,7 @@
 export const UPLOAD_MAX_BYTES = 10 * 1024 * 1024; // 10 Mo
 export const UPLOAD_ALLOWED_MIME = "application/pdf";
 export const STORAGE_BUCKET = "invoices";
+export const UPLOADS_PER_PAGE = 10;
 
 /**
  * Génère un slug URL-safe à partir du nom de fichier.

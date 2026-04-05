@@ -8,6 +8,7 @@ import {
   UPLOAD_MAX_BYTES,
   UPLOAD_ALLOWED_MIME,
   STORAGE_BUCKET,
+  UPLOADS_PER_PAGE,
   buildStoragePath,
 } from "@/lib/upload-config";
 import { triggerOcrAsync } from "@/lib/api";
@@ -146,8 +147,6 @@ export async function uploadInvoice(formData: FormData): Promise<UploadResult> {
 // --------------------------------------------------------------------------
 // Lecture de l'historique des uploads d'un utilisateur
 // --------------------------------------------------------------------------
-
-export const UPLOADS_PER_PAGE = 10;
 
 export async function getUserUploads(page = 1): Promise<{
   uploads: UploadRecord[];
