@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseSessionClient } from "@/lib/supabase-server";
 import { createSupabaseServerClient } from "@/lib/supabase";
+import { checkUploadQuota, incrementUsage } from "@/lib/billing";
 
 // --------------------------------------------------------------------------
 // Constantes
@@ -37,10 +38,15 @@ export interface UploadRecord {
   extraction_processed_at?: string | null;
   extraction_version?: string | null;
   extracted_fields?: Record<string, unknown> | null;
+  // Champs conformité (T006) — optionnels : absents avant la migration 006
+  compliance_status?: "pending" | "processing" | "checked" | "failed";
+  compliance_score?: number | null;
+  compliance_band?: "conforme" | "attention" | "non_conforme_corrections" | "non_conforme_invalide" | null;
 }
 
 export type UploadErrorCode =
   | "unauthenticated"
+  | "quota_exceeded"
   | "invalid_type"
   | "too_large"
   | "upload_error";
@@ -114,7 +120,13 @@ export async function uploadInvoice(formData: FormData): Promise<UploadResult> {
     return { success: false, code: "unauthenticated" };
   }
 
-  // 2. Récupération et validation serveur du fichier
+  // 2. Vérification du quota mensuel
+  const quota = await checkUploadQuota(user.id);
+  if (!quota.allowed) {
+    return { success: false, code: "quota_exceeded" };
+  }
+
+  // 3. Récupération et validation serveur du fichier
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
@@ -129,10 +141,10 @@ export async function uploadInvoice(formData: FormData): Promise<UploadResult> {
     return { success: false, code: "too_large" };
   }
 
-  // 3. Génération d'un chemin de stockage sûr et unique
+  // 4. Génération d'un chemin de stockage sûr et unique
   const storagePath = buildStoragePath(user.id, file.name);
 
-  // 4. Téléversement vers Supabase Storage (via service role)
+  // 5. Téléversement vers Supabase Storage (via service role)
   const adminClient = createSupabaseServerClient();
 
   const { error: storageError } = await adminClient.storage
@@ -147,7 +159,7 @@ export async function uploadInvoice(formData: FormData): Promise<UploadResult> {
     return { success: false, code: "upload_error" };
   }
 
-  // 5. Insertion des métadonnées en base (ocr_status = 'pending' par défaut via DB)
+  // 6. Insertion des métadonnées en base (ocr_status = 'pending' par défaut via DB)
   const { data: upload, error: dbError } = await adminClient
     .from("uploads")
     .insert({
@@ -168,10 +180,15 @@ export async function uploadInvoice(formData: FormData): Promise<UploadResult> {
     return { success: false, code: "upload_error" };
   }
 
-  // 6. Invalide le cache dashboard
+  // 7. Invalide le cache dashboard
   revalidatePath("/dashboard");
 
-  // 7. Déclencher l'OCR de façon asynchrone (fire-and-forget)
+  // 8. Incrémenter le compteur de factures du mois (fire-and-forget, pas bloquant)
+  incrementUsage(user.id).catch((err: unknown) => {
+    console.error("[upload] Échec de l'incrémentation du quota :", err);
+  });
+
+  // 9. Déclencher l'OCR de façon asynchrone (fire-and-forget)
   triggerOcrAsync(upload.id);
 
   return { success: true, upload };

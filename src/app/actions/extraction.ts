@@ -82,7 +82,7 @@ export async function retryExtraction(
     return { success: false, code: "already_processing" };
   }
 
-  // 5. Remettre à zéro les champs d'extraction
+  // 5. Remettre à zéro les champs d'extraction et de conformité
   const { error: resetErr } = await admin
     .from("uploads")
     .update({
@@ -91,6 +91,9 @@ export async function retryExtraction(
       extraction_error:       null,
       extraction_processed_at: null,
       extraction_version:     null,
+      compliance_status:      null,
+      compliance_score:       null,
+      compliance_band:        null,
     })
     .eq("id", uploadId);
 

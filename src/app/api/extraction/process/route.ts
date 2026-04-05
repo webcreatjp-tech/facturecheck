@@ -4,6 +4,7 @@
 
 import { createSupabaseServerClient } from "@/lib/supabase";
 import { getExtractionProvider } from "@/lib/extraction";
+import { triggerComplianceAsync } from "@/app/actions/compliance";
 import type { UploadRecord } from "@/app/actions/upload";
 
 export const runtime = "nodejs";
@@ -131,6 +132,10 @@ export async function POST(request: Request) {
     console.info(
       `[extraction/process] Upload ${uploadId} extrait par "${result.provider}" v${result.version}`
     );
+
+    // Déclencher la vérification de conformité de façon asynchrone (fire-and-forget)
+    triggerComplianceAsync(uploadId);
+
     return Response.json({ success: true, uploadId });
   } catch (err) {
     const errMsg =

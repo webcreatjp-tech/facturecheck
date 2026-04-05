@@ -27,6 +27,12 @@ const {
 
 vi.mock("next/cache", () => ({ revalidatePath: () => mockRevalidatePath() }));
 
+// Mock billing : quota toujours autorisé par défaut dans les tests d'upload
+vi.mock("@/lib/billing", () => ({
+  checkUploadQuota: vi.fn().mockResolvedValue({ allowed: true, used: 0, limit: 3, remaining: 3 }),
+  incrementUsage: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/supabase-server", () => ({
   createSupabaseSessionClient: vi.fn().mockResolvedValue({
     auth: { getUser: mockGetUser },
@@ -177,5 +183,18 @@ describe("uploadInvoice", () => {
     const exact = makePdf("limit.pdf", UPLOAD_MAX_BYTES);
     const result = await uploadInvoice(makeFormData(exact));
     expect(result.success).toBe(true);
+  });
+
+  it("retourne quota_exceeded si le quota mensuel est atteint", async () => {
+    const { checkUploadQuota } = await import("@/lib/billing");
+    vi.mocked(checkUploadQuota).mockResolvedValueOnce({
+      allowed: false,
+      used: 3,
+      limit: 3,
+      remaining: 0,
+    });
+    const result = await uploadInvoice(makeFormData(makePdf()));
+    expect(result).toEqual({ success: false, code: "quota_exceeded" });
+    expect(mockStorageUpload).not.toHaveBeenCalled();
   });
 });

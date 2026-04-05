@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, FileText, AlertCircle, Clock, Layers } from "lucide-react";
+import { ArrowLeft, FileText, AlertCircle, Clock, Layers, ShieldCheck } from "lucide-react";
 import { getUploadWithOcr } from "@/app/actions/ocr";
+import { getComplianceResult } from "@/app/actions/compliance";
 import RetryOcrButton from "@/components/RetryOcrButton";
 import RetryExtractionButton from "@/components/RetryExtractionButton";
+import RetryComplianceButton from "@/components/RetryComplianceButton";
 import ExtractedFieldsPanel from "@/components/ExtractedFieldsPanel";
+import ComplianceReport from "@/components/ComplianceReport";
 import type { StructuredInvoiceFields } from "@/lib/extraction/types";
 
 // --------------------------------------------------------------------------
@@ -41,15 +44,18 @@ interface PageProps {
 export default async function UploadDetailPage({ params }: PageProps) {
   const { id } = await params;
 
-  // Récupère le document (contrôle d'accès : owner uniquement)
-  const upload = await getUploadWithOcr(id);
+  const [upload, compliance] = await Promise.all([
+    getUploadWithOcr(id),
+    getComplianceResult(id),
+  ]);
 
   if (!upload) {
     redirect("/dashboard");
   }
 
-  const ocrStatus = upload.ocr_status ?? "pending";
+  const ocrStatus        = upload.ocr_status ?? "pending";
   const extractionStatus = upload.extraction_status ?? "pending";
+  const complianceStatus = upload.compliance_status ?? null;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -242,6 +248,63 @@ export default async function UploadDetailPage({ params }: PageProps) {
               fields={upload.extracted_fields as unknown as StructuredInvoiceFields}
               extractionVersion={upload.extraction_version}
             />
+          )}
+        </>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          Section Conformité (visible seulement si extraction terminée)
+      ══════════════════════════════════════════════════════════════ */}
+
+      {extractionStatus === "extracted" && (
+        <>
+          {(!complianceStatus || complianceStatus === "pending") && (
+            <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50 py-10 text-center">
+              <ShieldCheck className="h-8 w-8 text-gray-300" aria-hidden />
+              <p className="font-medium text-gray-600">
+                Vérification de conformité en attente
+              </p>
+              <RetryComplianceButton uploadId={upload.id} />
+            </div>
+          )}
+
+          {complianceStatus === "processing" && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex flex-col items-center gap-4 rounded-2xl border border-green-100 bg-green-50 py-10 text-center"
+            >
+              <div className="h-8 w-8 rounded-full border-4 border-green-200 border-t-green-500 animate-spin" />
+              <p className="font-medium text-green-700">
+                Vérification de conformité en cours…
+              </p>
+              <p className="text-sm text-green-600">
+                Actualisez la page dans quelques instants.
+              </p>
+            </div>
+          )}
+
+          {complianceStatus === "failed" && (
+            <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle
+                  className="h-5 w-5 text-red-500 shrink-0 mt-0.5"
+                  aria-hidden
+                />
+                <div className="flex-1">
+                  <p className="font-semibold text-red-700">
+                    La vérification de conformité a échoué
+                  </p>
+                  <div className="mt-4">
+                    <RetryComplianceButton uploadId={upload.id} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {complianceStatus === "checked" && compliance && (
+            <ComplianceReport result={compliance} uploadId={upload.id} />
           )}
         </>
       )}

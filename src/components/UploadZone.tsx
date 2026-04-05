@@ -20,6 +20,8 @@ type UploadState = "idle" | "selected" | "loading" | "success" | "error";
 interface UploadZoneProps {
   /** Callback déclenché après un upload réussi (pour mise à jour optimiste). */
   onUploadSuccess?: (upload: UploadRecord) => void;
+  /** Si true, l'upload est désactivé (quota mensuel atteint). */
+  quotaReached?: boolean;
 }
 
 // --------------------------------------------------------------------------
@@ -30,6 +32,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   invalid_type: "Seuls les fichiers PDF sont acceptés.",
   too_large: `Le fichier dépasse la taille limite de ${UPLOAD_MAX_BYTES / 1024 / 1024} Mo.`,
   unauthenticated: "Vous devez être connecté pour téléverser une facture.",
+  quota_exceeded:
+    "Vous avez atteint votre limite mensuelle de factures. Passez à un plan supérieur pour continuer.",
   upload_error: "Le téléversement a échoué. Veuillez réessayer.",
 };
 
@@ -37,7 +41,10 @@ const ERROR_MESSAGES: Record<string, string> = {
 // Composant
 // --------------------------------------------------------------------------
 
-export default function UploadZone({ onUploadSuccess }: UploadZoneProps) {
+export default function UploadZone({
+  onUploadSuccess,
+  quotaReached = false,
+}: UploadZoneProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const statusId = useId();
@@ -141,6 +148,26 @@ export default function UploadZone({ onUploadSuccess }: UploadZoneProps) {
   }
 
   // -------------- Rendu ----------------------------------------------------
+
+  if (quotaReached) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-red-200 bg-red-50 p-10 text-center">
+        <AlertCircle className="h-10 w-10 text-red-400" aria-hidden />
+        <div>
+          <p className="font-semibold text-red-700">Quota mensuel atteint</p>
+          <p className="mt-1 text-sm text-red-500">
+            Passez à un plan supérieur pour téléverser d&apos;autres factures.
+          </p>
+        </div>
+        <a
+          href="/dashboard/billing"
+          className="mt-1 text-sm font-medium text-red-700 underline underline-offset-2 hover:text-red-900"
+        >
+          Voir les plans →
+        </a>
+      </div>
+    );
+  }
 
   return (
     <section aria-label="Téléversement de facture PDF">

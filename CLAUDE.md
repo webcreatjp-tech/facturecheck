@@ -286,6 +286,8 @@ npm test             # tests en mode watch
 | T003 | Auth Supabase + upload PDF sécurisé | `feature/T003` |
 | T004 | Pipeline OCR (pdf-parse + Azure stub) | `feature/T004` |
 | T005 | Extraction structurée des champs de facture (regex) | `feature/T005` |
+| T006 | Moteur de conformité + score + rapport (23 règles CGI) | `feature/T006` |
+| T007 | Facturation Stripe (Free/Starter/Pro, quota, webhook) | `feature/T007` |
 
 ---
 
@@ -294,7 +296,53 @@ npm test             # tests en mode watch
 Variables à configurer dans **Project → Settings → Environment Variables** :
 
 - `NEXT_PUBLIC_*` : Production + Preview
-- `SUPABASE_SERVICE_ROLE_KEY` et `INTERNAL_OCR_SECRET` : **Production uniquement**
+- `SUPABASE_SERVICE_ROLE_KEY`, `INTERNAL_OCR_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` : **Production uniquement**
+- `STRIPE_STARTER_PRICE_ID`, `STRIPE_PRO_PRICE_ID` : Production + Preview
 
 > La route `/api/ocr/process` utilise le runtime Node.js (pas Edge).  
 > Le fire-and-forget crée une invocation serverless distincte — comportement garanti sur Vercel.
+
+---
+
+## Facturation Stripe (T007)
+
+### Plans
+
+| Plan | Limite | Prix |
+|---|---|---|
+| `free` | 3 factures/mois | Gratuit |
+| `starter` | 10 factures/mois | 9 €/mois |
+| `pro` | Illimité | 29 €/mois |
+| `canceled` | 3 factures/mois (rétrogradé) | — |
+
+### Architecture
+
+```
+uploadInvoice()
+    │
+    ├─ checkUploadQuota(userId)   ← lit profiles via service role
+    │  └─ retourne { allowed, used, limit, remaining }
+    │  └─ refused → { code: 'quota_exceeded' }
+    │
+    └─ (après insert DB réussi)
+       incrementUsage(userId)     ← fire-and-forget, appelle RPC increment_invoices_used
+```
+
+### Webhook Stripe → `/api/stripe/webhook`
+
+| Événement | Action |
+|---|---|
+| `checkout.session.completed` | Met à jour `profiles` (customer_id, subscription, plan) |
+| `customer.subscription.updated` | Met à jour le plan et la date de fin |
+| `customer.subscription.deleted` | Passe à `canceled` |
+| `invoice.paid` | Remet `invoices_used_this_month` à 0 (renouvellement) |
+
+### Configuration Stripe
+
+1. Créer deux produits dans le Dashboard Stripe : **Starter** (9 €/mois) et **Pro** (29 €/mois)
+2. Copier les Price IDs dans `.env.local` (`STRIPE_STARTER_PRICE_ID`, `STRIPE_PRO_PRICE_ID`)
+3. Créer un endpoint webhook pointant vers `https://votre-domaine.com/api/stripe/webhook`
+4. Activer les événements : `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`
+5. Copier le Signing secret dans `STRIPE_WEBHOOK_SECRET`
+
+> **Tests locaux** : utiliser `stripe listen --forward-to localhost:3000/api/stripe/webhook`
