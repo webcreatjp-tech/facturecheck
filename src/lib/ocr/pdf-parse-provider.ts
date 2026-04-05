@@ -17,10 +17,10 @@ export class PdfParseProvider implements OcrProvider {
   readonly name = "pdf-parse";
 
   async extractText(pdfBuffer: Buffer): Promise<OcrResult> {
-    // pdf-parse v1 est un module CJS qui exporte directement une fonction.
-    // require() est plus fiable qu'import() dynamique pour les modules CJS.
+    // pdf-parse v1 : importer depuis le fichier lib interne pour éviter
+    // le self-test qui cherche './test/data/05-versions-space.pdf' au démarrage.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse") as (
+    const pdfParse = require("pdf-parse/lib/pdf-parse") as (
       buf: Buffer,
       opts?: { max?: number }
     ) => Promise<{ text: string }>;
