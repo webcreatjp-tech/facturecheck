@@ -38,24 +38,50 @@ Copiez `.env.local.example` en `.env.local` et renseignez les trois variables :
 | `NEXT_PUBLIC_SUPABASE_URL` | Client + Serveur | URL du projet Supabase (Dashboard → Settings → API) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client + Serveur | Clé anonyme Supabase (publique, sans danger) |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Serveur uniquement** | Clé service role — **ne jamais exposer côté client** |
+| `NEXT_PUBLIC_APP_URL` | Client + Serveur | URL de base de l'app (`http://localhost:3000` en dev) |
 
 ```bash
 cp .env.local.example .env.local
 # Éditez .env.local avec les valeurs de votre projet Supabase
 ```
 
-> **Déploiement Vercel** : ajoutez ces trois variables dans *Project → Settings → Environment Variables*.  
+> **Déploiement Vercel** : ajoutez ces variables dans *Project → Settings → Environment Variables*.  
 > Sélectionnez "Production" et "Preview" pour `NEXT_PUBLIC_*`, mais **uniquement "Production"** pour `SUPABASE_SERVICE_ROLE_KEY`.
 
-### Migration base de données
+### Migrations base de données
 
-Avant le premier lancement, exécutez le fichier de migration dans l'éditeur SQL Supabase :
+Exécutez les scripts SQL dans l'ordre dans l'éditeur SQL Supabase (Dashboard → SQL Editor) :
 
-```
-migrations/001_waitlist.sql
-```
+| Fichier | Contenu |
+|---|---|
+| `migrations/001_waitlist.sql` | Table `waitlist` + RLS |
+| `migrations/002_uploads.sql` | Table `uploads` + RLS (référence `auth.users`) |
+| `migrations/003_storage.sql` | Politiques RLS sur `storage.objects` |
 
-Ce script crée la table `waitlist`, les contraintes d'unicité sur l'email, et les politiques RLS (insertion publique, lecture réservée au service role).
+### Bucket Supabase Storage (T003)
+
+Avant d'utiliser l'upload de factures, créez le bucket `invoices` manuellement :
+
+1. Dashboard Supabase → **Storage** → **New bucket**
+2. Nom : `invoices`
+3. **Décocher** "Public bucket" (bucket privé obligatoire)
+4. Appliquer les politiques dans `migrations/003_storage.sql`
+
+Constraints du bucket recommandées (via l'API ou config) :
+- Taille maximale : **10 485 760 octets** (10 Mo)
+- Types MIME autorisés : `application/pdf`
+
+### Supabase Auth (T003)
+
+Le tableau de bord `/dashboard` est protégé par Supabase Auth (email + mot de passe).  
+Configuration requise dans Dashboard Supabase → **Authentication → URL Configuration** :
+
+- **Site URL** : `http://localhost:3000` (dev) ou votre domaine (prod)
+- **Redirect URLs** : ajouter `http://localhost:3000/auth/callback`
+
+> En développement, vous pouvez désactiver la confirmation email dans  
+> Dashboard → Authentication → Providers → Email → **"Confirm email" OFF**  
+> pour simplifier les tests.
 
 ## Deploy on Vercel
 
