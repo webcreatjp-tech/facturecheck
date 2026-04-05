@@ -2,12 +2,20 @@ import { getUserUploads } from "@/app/actions/upload";
 import { getUserProfile } from "@/app/actions/billing";
 import UploadZone from "@/components/UploadZone";
 import UploadHistory from "@/components/UploadHistory";
+import StatusPoller from "@/components/StatusPoller";
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 
-export default async function DashboardPage() {
-  const [uploads, profile] = await Promise.all([
-    getUserUploads(),
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const params = await searchParams;
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+
+  const [{ uploads, totalPages }, profile] = await Promise.all([
+    getUserUploads(page),
     getUserProfile(),
   ]);
 
@@ -74,7 +82,20 @@ export default async function DashboardPage() {
       </section>
 
       {/* ── Historique ── */}
-      <UploadHistory uploads={uploads} />
+      <UploadHistory uploads={uploads} page={page} totalPages={totalPages} />
+
+      {/* ── Polling auto si des uploads sont en cours ── */}
+      <StatusPoller
+        active={uploads.some(
+          (u) =>
+            u.ocr_status === "pending" ||
+            u.ocr_status === "processing" ||
+            u.extraction_status === "pending" ||
+            u.extraction_status === "processing" ||
+            u.compliance_status === "pending" ||
+            u.compliance_status === "processing"
+        )}
+      />
     </div>
   );
 }

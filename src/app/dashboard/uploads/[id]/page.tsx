@@ -8,6 +8,7 @@ import RetryExtractionButton from "@/components/RetryExtractionButton";
 import RetryComplianceButton from "@/components/RetryComplianceButton";
 import ExtractedFieldsPanel from "@/components/ExtractedFieldsPanel";
 import ComplianceReport from "@/components/ComplianceReport";
+import StatusPoller from "@/components/StatusPoller";
 import type { StructuredInvoiceFields } from "@/lib/extraction/types";
 
 // --------------------------------------------------------------------------
@@ -308,6 +309,18 @@ export default async function UploadDetailPage({ params }: PageProps) {
           )}
         </>
       )}
+
+      {/* ── Polling auto tant que le pipeline est en cours ── */}
+      <StatusPoller
+        active={
+          ocrStatus === "pending" ||
+          ocrStatus === "processing" ||
+          extractionStatus === "pending" ||
+          extractionStatus === "processing" ||
+          complianceStatus === "pending" ||
+          complianceStatus === "processing"
+        }
+      />
     </div>
   );
 }

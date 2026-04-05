@@ -147,21 +147,36 @@ export async function uploadInvoice(formData: FormData): Promise<UploadResult> {
 // Lecture de l'historique des uploads d'un utilisateur
 // --------------------------------------------------------------------------
 
-export async function getUserUploads(): Promise<UploadRecord[]> {
+export const UPLOADS_PER_PAGE = 10;
+
+export async function getUserUploads(page = 1): Promise<{
+  uploads: UploadRecord[];
+  total: number;
+  totalPages: number;
+}> {
   const sessionClient = await createSupabaseSessionClient();
   const {
     data: { user },
   } = await sessionClient.auth.getUser();
 
-  if (!user) return [];
+  if (!user) return { uploads: [], total: 0, totalPages: 0 };
 
   const adminClient = createSupabaseServerClient();
-  const { data } = await adminClient
+  const from = (page - 1) * UPLOADS_PER_PAGE;
+  const to = from + UPLOADS_PER_PAGE - 1;
+
+  const { data, count } = await adminClient
     .from("uploads")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
+    .range(from, to)
     .returns<UploadRecord[]>();
 
-  return data ?? [];
+  const total = count ?? 0;
+  return {
+    uploads: data ?? [],
+    total,
+    totalPages: Math.ceil(total / UPLOADS_PER_PAGE),
+  };
 }

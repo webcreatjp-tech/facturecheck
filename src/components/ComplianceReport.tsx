@@ -1,6 +1,7 @@
 import { AlertCircle, AlertTriangle, Info, CheckCircle2 } from "lucide-react";
 import type { ComplianceResultRecord, ScoreBand, RuleResult } from "@/lib/compliance/types";
 import RetryComplianceButton from "./RetryComplianceButton";
+import PrintButton from "./PrintButton";
 
 // --------------------------------------------------------------------------
 // Helpers
@@ -208,12 +209,15 @@ export default function ComplianceReport({
           </div>
         )}
 
-        {/* ── Action relancer ── */}
-        <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+        {/* ── Actions ── */}
+        <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
           <p className="text-xs text-gray-400">
             Relancez la vérification après correction des données extraites.
           </p>
-          <RetryComplianceButton uploadId={uploadId} />
+          <div className="flex gap-2">
+            <PrintButton />
+            <RetryComplianceButton uploadId={uploadId} />
+          </div>
         </div>
       </div>
     </div>

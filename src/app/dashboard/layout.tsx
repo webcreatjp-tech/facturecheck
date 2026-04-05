@@ -3,6 +3,8 @@ import { createSupabaseSessionClient } from "@/lib/supabase-server";
 import { getOrCreateProfile } from "@/lib/billing";
 import LogoutButton from "@/components/LogoutButton";
 import PlanBadge from "@/components/PlanBadge";
+import Link from "next/link";
+import { User } from "lucide-react";
 
 export const metadata = {
   title: "Tableau de bord – FactureCheck",
@@ -47,6 +49,14 @@ export default async function DashboardLayout({
               {user.email}
             </span>
             <PlanBadge status={planStatus} />
+            <Link
+              href="/dashboard/profile"
+              className="inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              title="Mon profil"
+              aria-label="Mon profil"
+            >
+              <User className="h-4 w-4" aria-hidden />
+            </Link>
             <LogoutButton />
           </div>
         </div>

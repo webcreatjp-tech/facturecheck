@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Eye, RotateCcw } from "lucide-react";
+import { FileText, Eye, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import type { UploadRecord } from "@/app/actions/upload";
 import RetryOcrButton from "@/components/RetryOcrButton";
 import ComplianceBadge from "@/components/ComplianceBadge";
@@ -50,9 +50,11 @@ const OCR_STATUS_CLASSES: Record<OcrStatus, string> = {
 
 interface UploadHistoryProps {
   uploads: UploadRecord[];
+  page?: number;
+  totalPages?: number;
 }
 
-export default function UploadHistory({ uploads }: UploadHistoryProps) {
+export default function UploadHistory({ uploads, page = 1, totalPages = 1 }: UploadHistoryProps) {
   return (
     <section aria-label="Historique des factures téléversées">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -157,6 +159,45 @@ export default function UploadHistory({ uploads }: UploadHistoryProps) {
             );
           })}
         </ul>
+      )}
+
+      {/* ── Pagination ── */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-4">
+          {page > 1 ? (
+            <Link
+              href={`/dashboard?page=${page - 1}`}
+              className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+              Précédent
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-xl border border-gray-100 bg-gray-50 px-3 py-1.5 text-sm text-gray-300 cursor-not-allowed">
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+              Précédent
+            </span>
+          )}
+
+          <span className="text-sm text-gray-500 px-2">
+            {page} / {totalPages}
+          </span>
+
+          {page < totalPages ? (
+            <Link
+              href={`/dashboard?page=${page + 1}`}
+              className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Suivant
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-xl border border-gray-100 bg-gray-50 px-3 py-1.5 text-sm text-gray-300 cursor-not-allowed">
+              Suivant
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </span>
+          )}
+        </div>
       )}
     </section>
   );
